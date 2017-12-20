@@ -1,34 +1,37 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"math"
-	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
-)
 
-// API constants.
-const (
-	APIEndpoint = "https://api.coinbase.com"
-	APIVersion  = "2016-05-16"
+	coinbase "github.com/jeffreylo/btc/coinbase"
 )
 
 func main() {
-	var sinceDate string
+	var (
+		sinceDate string
+		sinceZero bool
+	)
 	flag.StringVar(&sinceDate, "since", "", "ISO-8601 date")
+	flag.BoolVar(&sinceZero, "zero", false, "")
 	flag.Parse()
-	since := time.Now().Add(-4 * 7 * 24 * time.Hour) // last 4 weeks
+
+	if sinceDate != "" && sinceZero {
+		log.Fatal("one of -since or -zero")
+	}
+
+	var since time.Time
+	if !sinceZero {
+		since = time.Now().Add(-4 * 7 * 24 * time.Hour) // last 4 weeks
+	}
 	if sinceDate != "" {
 		s, err := time.Parse("2006-01-02", sinceDate)
 		if err != nil {
@@ -112,7 +115,7 @@ func (g *Gains) ProfitPercent() float64 {
 }
 
 func calcGains(since time.Time) []*Gains {
-	cb := &Coinbase{
+	cb := &coinbase.Client{
 		Key:    os.Getenv("COINBASE_KEY"),
 		Secret: os.Getenv("COINBASE_SECRET"),
 	}
@@ -173,151 +176,6 @@ func must(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-type Amount struct {
-	RawAmount string `json:"amount"`
-	Currency  string `json:"currency"`
-}
-
-func (a Amount) Amount() float64 {
-	f, err := strconv.ParseFloat(a.RawAmount, 64)
-	if err != nil {
-		panic(err)
-	}
-	return f
-}
-
-type Transaction struct {
-	Type         string    `json:"type"`
-	Amount       Amount    `json:"amount"`
-	NativeAmount Amount    `json:"native_amount"`
-	CreatedAt    time.Time `json:"created_at"`
-	Buy          struct {
-		Fee      Amount `json:"fee"`
-		Amount   Amount `json:"amount"`
-		Total    Amount `json:"total"`
-		Subtotal Amount `json:"subtotal"`
-	} `json:"buy"`
-	Sell struct {
-		Fee      Amount `json:"fee"`
-		Amount   Amount `json:"amount"`
-		Total    Amount `json:"total"`
-		Subtotal Amount `json:"subtotal"`
-	} `json:"sell"`
-}
-
-type Coinbase struct {
-	Key    string
-	Secret string
-}
-
-func (c *Coinbase) Authenticate(path string, req *http.Request) error {
-	timestamp := strconv.FormatInt(time.Now().UTC().Unix(), 10)
-	message := timestamp + req.Method + path
-
-	sha := sha256.New
-	h := hmac.New(sha, []byte(c.Secret))
-	h.Write([]byte(message))
-
-	signature := fmt.Sprintf("%x", h.Sum(nil))
-
-	req.Header.Set("CB-ACCESS-KEY", c.Key)
-	req.Header.Set("CB-ACCESS-SIGN", signature)
-	req.Header.Set("CB-ACCESS-TIMESTAMP", timestamp)
-
-	return nil
-}
-
-func (c *Coinbase) get(path string, value interface{}) error {
-	req, err := http.NewRequest(http.MethodGet, APIEndpoint+path, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("CB-Version", APIVersion)
-	if !strings.HasSuffix(path, "time") {
-		err = c.Authenticate(path, req)
-		if err != nil {
-			return err
-		}
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode >= 400 {
-		return errors.New(resp.Status + ": " + path)
-	}
-	if err := json.NewDecoder(resp.Body).Decode(value); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Coinbase) GetTransactions(account string) ([]*Transaction, error) {
-	url := "/v2/accounts/" + account + "/transactions?limit=100&expand=all"
-	var result struct {
-		Data []*Transaction `json:"data"`
-	}
-	if err := c.get(url, &result); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
-}
-
-func (c *Coinbase) GetAllTransactions(accounts []string) ([]*Transaction, error) {
-	result := make([]*Transaction, 0)
-	for _, account := range accounts {
-		t, err := c.GetTransactions(account)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, t...)
-	}
-	return result, nil
-}
-
-type Account struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-func (c *Coinbase) GetAccounts() ([]*Account, error) {
-	url := "/v2/accounts"
-	var result struct {
-		Data []*Account `json:"data"`
-	}
-	if err := c.get(url, &result); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
-}
-
-type SpotRate struct {
-	Base      string `json:"base"`
-	Currency  string `json:"currency"`
-	RawAmount string `json:"amount"`
-}
-
-func (s SpotRate) Amount() float64 {
-	f, err := strconv.ParseFloat(s.RawAmount, 64)
-	if err != nil {
-		panic(err)
-	}
-	return f
-}
-
-func (c *Coinbase) GetSpotRates() ([]*SpotRate, error) {
-	url := "/v2/prices/USD/spot"
-	var result struct {
-		Data []*SpotRate `json:"data"`
-	}
-	if err := c.get(url, &result); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
 }
 
 func maxInt(x, y int) int {
