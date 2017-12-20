@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -15,21 +16,34 @@ import (
 	coinbase "github.com/jeffreylo/btc/coinbase"
 )
 
+type byCurrency [][]string
+
+func (s byCurrency) Len() int {
+	return len(s)
+}
+func (s byCurrency) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s byCurrency) Less(i, j int) bool {
+	return s[i][0] < s[j][0]
+}
+
 func main() {
 	var (
 		sinceDate string
-		sinceZero bool
+		all       bool
 	)
 	flag.StringVar(&sinceDate, "since", "", "ISO-8601 date")
-	flag.BoolVar(&sinceZero, "zero", false, "")
+	flag.BoolVar(&all, "all", false, "")
+
 	flag.Parse()
 
-	if sinceDate != "" && sinceZero {
+	if sinceDate != "" && all {
 		log.Fatal("one of -since or -zero")
 	}
 
 	var since time.Time
-	if !sinceZero {
+	if !all {
 		since = time.Now().Add(-4 * 7 * 24 * time.Hour) // last 4 weeks
 	}
 	if sinceDate != "" {
@@ -51,10 +65,11 @@ func main() {
 	var sums struct {
 		costBasis, nativeValue float64
 	}
+	var output [][]string
 	for _, gain := range gains {
 		sums.costBasis += gain.CostBasis
 		sums.nativeValue += gain.NativeValue
-		printLine(w, []string{
+		output = append(output, []string{
 			gain.Currency,
 			fmtUSD(gain.CostBasis),
 			fmtVal(gain.Value),
@@ -62,10 +77,16 @@ func main() {
 			sign(gain.Profit()) + fmtUSD(math.Abs(gain.Profit())),
 			sign(gain.ProfitPercent()) + fmtPCT(math.Abs(gain.ProfitPercent())),
 		})
+
+	}
+	sort.Sort(byCurrency(output))
+	for _, v := range output {
+		printLine(w, v)
 	}
 	profit := sums.nativeValue - sums.costBasis
 	profitPCT := profit / sums.costBasis
 	printSep(w, headers)
+
 	printLine(w, []string{
 		"Total",
 		fmtUSD(sums.costBasis), // cost basis
@@ -74,6 +95,7 @@ func main() {
 		sign(profit) + fmtUSD(math.Abs(profit)),
 		sign(profit) + fmtPCT(math.Abs(profitPCT)),
 	})
+
 	_ = w.Flush()
 }
 
@@ -128,8 +150,8 @@ func calcGains(since time.Time) []*Gains {
 	trans, err := cb.GetAllTransactions(accountIDs)
 	must(err)
 
-	amount := make(map[string]float64, 0)
-	costBasis := make(map[string]float64, 0)
+	amount := make(map[coinbase.Currency]float64, 0)
+	costBasis := make(map[coinbase.Currency]float64, 0)
 
 	for _, t := range trans {
 		if t.CreatedAt.Before(since) {
@@ -152,14 +174,14 @@ func calcGains(since time.Time) []*Gains {
 	must(err)
 	gains := make([]*Gains, 0)
 	for _, s := range spot {
-		val := amount[s.Base]
+		val := amount[coinbase.Currency(s.Base)]
 		if val == 0 {
 			continue
 		}
 		gains = append(gains, &Gains{
 			Currency:    s.Base,
 			Value:       val,
-			CostBasis:   costBasis[s.Base],
+			CostBasis:   costBasis[coinbase.Currency(s.Base)],
 			NativeValue: val * s.Amount(),
 		})
 	}

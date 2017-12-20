@@ -19,9 +19,18 @@ const (
 )
 
 type Amount struct {
-	RawAmount string `json:"amount"`
-	Currency  string `json:"currency"`
+	RawAmount string   `json:"amount"`
+	Currency  Currency `json:"currency"`
 }
+
+type Currency string
+
+const (
+	BCH Currency = "BCH"
+	BTC Currency = "BCT"
+	ETH Currency = "ETH"
+	LTC Currency = "LTC"
+)
 
 func (a Amount) Amount() float64 {
 	f, err := strconv.ParseFloat(a.RawAmount, 64)
