@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -242,6 +243,9 @@ func (c *Coinbase) get(path string, value interface{}) error {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode >= 400 {
+		return errors.New(resp.Status + ": " + path)
 	}
 	if err := json.NewDecoder(resp.Body).Decode(value); err != nil {
 		return err
