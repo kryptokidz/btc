@@ -57,7 +57,7 @@ func main() {
 			fmtVal(gain.Value),
 			fmtVal(gain.NativeValue),
 			sign(gain.Profit()) + fmtUSD(math.Abs(gain.Profit())),
-			sign(gain.Profit()) + fmtPCT(math.Abs(gain.ProfitPercent())),
+			sign(gain.ProfitPercent()) + fmtPCT(math.Abs(gain.ProfitPercent())),
 		})
 	}
 	profit := sums.nativeValue - sums.costBasis
@@ -75,6 +75,9 @@ func main() {
 }
 
 func sign(val float64) string {
+	if math.IsInf(val, 0) {
+		return ""
+	}
 	if val < 0 {
 		return "-"
 	}
