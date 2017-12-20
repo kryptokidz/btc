@@ -19,7 +19,7 @@ export COINBASE_SECRET=
 To run:
 
 ```sh 
-$ go get github.com/jeffreylo/btc 
+$ go get github.com/kryptokidz/btc 
 $ btc
           Cost Basis   Amount    Value        $        %
  -------- ---------- -------- -------- -------- --------
