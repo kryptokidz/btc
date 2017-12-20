@@ -34,7 +34,7 @@ func main() {
 		all       bool
 	)
 	flag.StringVar(&sinceDate, "since", "", "ISO-8601 date")
-	flag.BoolVar(&all, "all", false, "")
+	flag.BoolVar(&all, "all", false, "show earnings since zero time")
 
 	flag.Parse()
 
