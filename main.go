@@ -13,7 +13,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	coinbase "github.com/jeffreylo/btc/coinbase"
+	"github.com/kryptokidz/btc/coinbase"
 )
 
 type byCurrency [][]string
