@@ -54,7 +54,7 @@ func main() {
 		since = s
 	}
 
-	gains := calcGains(since)
+	holdings := calcHoldings(since)
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 0, 1, ' ', tabwriter.AlignRight)
@@ -66,7 +66,7 @@ func main() {
 		costBasis, nativeValue float64
 	}
 	var output [][]string
-	for _, gain := range gains {
+	for _, gain := range holdings {
 		sums.costBasis += gain.CostBasis
 		sums.nativeValue += gain.NativeValue
 		output = append(output, []string{
@@ -125,22 +125,22 @@ func fmtVal(val float64) string {
 	return result
 }
 
-type Gains struct {
+type Holding struct {
 	Currency    string
 	Value       float64
 	CostBasis   float64
 	NativeValue float64
 }
 
-func (g *Gains) Profit() float64 {
+func (g *Holding) Profit() float64 {
 	return g.NativeValue - g.CostBasis
 }
 
-func (g *Gains) ProfitPercent() float64 {
+func (g *Holding) ProfitPercent() float64 {
 	return g.Profit() / g.CostBasis
 }
 
-func calcGains(since time.Time) []*Gains {
+func calcHoldings(since time.Time) []*Holding {
 	cb := &coinbase.Client{
 		Key:    os.Getenv("COINBASE_KEY"),
 		Secret: os.Getenv("COINBASE_SECRET"),
@@ -176,13 +176,13 @@ func calcGains(since time.Time) []*Gains {
 	}
 	spot, err := cb.GetSpotRates()
 	must(err)
-	gains := make([]*Gains, 0)
+	holdings := make([]*Holding, 0)
 	for _, s := range spot {
 		val := amount[coinbase.Currency(s.Base)]
 		if val == 0 {
 			continue
 		}
-		gains = append(gains, &Gains{
+		holdings = append(holdings, &Holding{
 			Currency:    s.Base,
 			Value:       val,
 			CostBasis:   costBasis[coinbase.Currency(s.Base)],
@@ -190,7 +190,7 @@ func calcGains(since time.Time) []*Gains {
 		})
 	}
 
-	return gains
+	return holdings
 }
 
 func js(v interface{}) string {
