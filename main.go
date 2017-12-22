@@ -110,15 +110,19 @@ func sign(val float64) string {
 }
 
 func fmtPCT(val float64) string {
-	return fmt.Sprintf("%.2f%%", val*100)
+	return fmtVal(val*100) + "%"
 }
 
 func fmtUSD(val float64) string {
-	return fmt.Sprintf("$%.2f", val)
+	return "$" + fmtVal(val)
 }
 
 func fmtVal(val float64) string {
-	return fmt.Sprintf("%.2f", val)
+	result := fmt.Sprintf("%.2f", val)
+	for i := strings.LastIndex(result, ".") - 3; i > 0; i -= 3 {
+		result = result[0:i] + "," + result[i:len(result)]
+	}
+	return result
 }
 
 type Gains struct {
