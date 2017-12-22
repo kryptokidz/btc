@@ -58,7 +58,7 @@ func main() {
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 0, 1, ' ', tabwriter.AlignRight)
-	headers := []string{"", "Cost Basis", "Amount", "$", "±", "%"}
+	headers := []string{"", "Cost Basis", "Amount", "$", "+/-", "%"}
 	printLine(w, headers)
 	printSep(w, headers)
 
