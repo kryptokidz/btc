@@ -18,7 +18,7 @@ To run:
 ```sh
 $ go get github.com/kryptokidz/btc
 $ btc
-          Cost Basis   Amount    Value        $        %
+          Cost Basis   Amount        $      +/-        %
  -------- ---------- -------- -------- -------- --------
       BCH      $0.00     0.00     0.00     0.00    0.00%
       BTC      $0.00     0.00     0.00     0.00    0.00%
