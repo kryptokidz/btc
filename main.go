@@ -16,18 +16,6 @@ import (
 	"github.com/kryptokidz/btc/coinbase"
 )
 
-type byCurrency [][]string
-
-func (s byCurrency) Len() int {
-	return len(s)
-}
-func (s byCurrency) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s byCurrency) Less(i, j int) bool {
-	return s[i][0] < s[j][0]
-}
-
 func main() {
 	var (
 		sinceDate string
@@ -79,7 +67,6 @@ func main() {
 		})
 
 	}
-	sort.Sort(byCurrency(output))
 	for _, v := range output {
 		printLine(w, v)
 	}
@@ -140,6 +127,18 @@ func (g *Holding) ProfitPercent() float64 {
 	return g.Profit() / g.CostBasis
 }
 
+type byCurrency []*coinbase.SpotRate
+
+func (s byCurrency) Len() int {
+	return len(s)
+}
+func (s byCurrency) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s byCurrency) Less(i, j int) bool {
+	return s[i].Base < s[j].Base
+}
+
 func calcHoldings(since time.Time) []*Holding {
 	cb := &coinbase.Client{
 		Key:    os.Getenv("COINBASE_KEY"),
@@ -176,6 +175,7 @@ func calcHoldings(since time.Time) []*Holding {
 	}
 	spot, err := cb.GetSpotRates()
 	must(err)
+	sort.Sort(byCurrency(spot))
 	holdings := make([]*Holding, 0)
 	for _, s := range spot {
 		val := amount[coinbase.Currency(s.Base)]
