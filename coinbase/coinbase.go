@@ -123,7 +123,6 @@ func (c *Client) GetAllTransactions(accounts []string) ([]*Transaction, error) {
 	var (
 		resultCh = make(chan []*Transaction)
 		errCh    = make(chan error)
-		result   = make([]*Transaction, 0)
 	)
 	for _, account := range accounts {
 		go func(account string) {
