@@ -120,13 +120,29 @@ func (c *Client) GetTransactions(account string) ([]*Transaction, error) {
 }
 
 func (c *Client) GetAllTransactions(accounts []string) ([]*Transaction, error) {
-	result := make([]*Transaction, 0)
+	var (
+		resultCh = make(chan []*Transaction)
+		errCh    = make(chan error)
+		result   = make([]*Transaction, 0)
+	)
 	for _, account := range accounts {
-		t, err := c.GetTransactions(account)
-		if err != nil {
+		go func(account string) {
+			t, err := c.GetTransactions(account)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			resultCh <- t
+		}(account)
+	}
+	result := make([]*Transaction, 0)
+	for _, _ = range accounts {
+		select {
+		case r := <-resultCh:
+			result = append(result, r...)
+		case err := <-errCh:
 			return nil, err
 		}
-		result = append(result, t...)
 	}
 	return result, nil
 }
