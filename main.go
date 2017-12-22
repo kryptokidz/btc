@@ -20,9 +20,11 @@ func main() {
 	var (
 		sinceDate string
 		all       bool
+		printSpot bool
 	)
 	flag.StringVar(&sinceDate, "since", "", "ISO-8601 date")
 	flag.BoolVar(&all, "all", false, "show earnings since zero time")
+	flag.BoolVar(&printSpot, "spot", false, "include currency spot rates")
 
 	flag.Parse()
 
@@ -42,33 +44,50 @@ func main() {
 		since = s
 	}
 
-	holdings := calcHoldings(since)
+	holdings, spot := calcHoldings(since)
+	if printSpot {
+		printSpotRates(spot)
+		fmt.Println()
+	}
+	printHoldings(holdings)
+}
 
+func printSpotRates(spot []*coinbase.SpotRate) {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 0, 1, ' ', tabwriter.AlignRight)
-	headers := []string{"", "Cost Basis", "Amount", "$", "+/-", "%"}
+	headers := []string{"Spot Rate", "$"}
+	printLine(w, headers)
+	printSep(w, headers)
+	for _, spot := range spot {
+		printLine(w, []string{
+			spot.Base,
+			fmtUSD(spot.Amount()),
+		})
+	}
+	_ = w.Flush()
+}
+
+func printHoldings(holdings []*Holding) {
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 0, 1, ' ', tabwriter.AlignRight)
+	headers := []string{"Holding", "Cost Basis", "Amount", "$", "+/-", "%"}
 	printLine(w, headers)
 	printSep(w, headers)
 
 	var sums struct {
 		costBasis, nativeValue float64
 	}
-	var output [][]string
-	for _, gain := range holdings {
-		sums.costBasis += gain.CostBasis
-		sums.nativeValue += gain.NativeValue
-		output = append(output, []string{
-			gain.Currency,
-			fmtUSD(gain.CostBasis),
-			fmtVal(gain.Value),
-			fmtUSD(gain.NativeValue),
-			sign(gain.Profit()) + fmtUSD(math.Abs(gain.Profit())),
-			sign(gain.ProfitPercent()) + fmtPCT(math.Abs(gain.ProfitPercent())),
+	for _, holding := range holdings {
+		sums.costBasis += holding.CostBasis
+		sums.nativeValue += holding.NativeValue
+		printLine(w, []string{
+			holding.Currency,
+			fmtUSD(holding.CostBasis),
+			fmtVal(holding.Value),
+			fmtUSD(holding.NativeValue),
+			sign(holding.Profit()) + fmtUSD(math.Abs(holding.Profit())),
+			sign(holding.ProfitPercent()) + fmtPCT(math.Abs(holding.ProfitPercent())),
 		})
-
-	}
-	for _, v := range output {
-		printLine(w, v)
 	}
 	profit := sums.nativeValue - sums.costBasis
 	profitPCT := profit / sums.costBasis
@@ -139,7 +158,7 @@ func (s byCurrency) Less(i, j int) bool {
 	return s[i].Base < s[j].Base
 }
 
-func calcHoldings(since time.Time) []*Holding {
+func calcHoldings(since time.Time) ([]*Holding, []*coinbase.SpotRate) {
 	cb := &coinbase.Client{
 		Key:    os.Getenv("COINBASE_KEY"),
 		Secret: os.Getenv("COINBASE_SECRET"),
@@ -190,7 +209,7 @@ func calcHoldings(since time.Time) []*Holding {
 		})
 	}
 
-	return holdings
+	return holdings, spot
 }
 
 func js(v interface{}) string {
@@ -218,7 +237,7 @@ func printLine(w io.Writer, v []string) {
 func printSep(w io.Writer, v []string) {
 	vv := make([]string, 0, len(v))
 	for _, col := range v {
-		vv = append(vv, strings.Repeat("-", maxInt(len(col), 8)))
+		vv = append(vv, strings.Repeat("-", maxInt(len(col), 10)))
 	}
 	printLine(w, vv)
 }
