@@ -1,12 +1,9 @@
 # btc
 
-w/ thanks to [@johngibb](https://github.com/johngibb) for pretty much all of
-this.
-
 [Generate a Coinbase API key](https://www.coinbase.com/settings/api). The key
 should be authorized to view all your wallets and have the permissions:
 
-- `wallet:accounts:read` 
+- `wallet:accounts:read`
 - `wallet:transactions:read`
 
 Save the client key and secret in `~/.profile`:
@@ -18,8 +15,8 @@ export COINBASE_SECRET=
 
 To run:
 
-```sh 
-$ go get github.com/kryptokidz/btc 
+```sh
+$ go get github.com/kryptokidz/btc
 $ btc
           Cost Basis   Amount    Value        $        %
  -------- ---------- -------- -------- -------- --------
@@ -30,3 +27,8 @@ $ btc
  -------- ---------- -------- -------- -------- --------
     Total      $0.00             $0.00     0.00    0.00%
 ```
+
+## Contributors
+
+- [@jeffreylo](https://github.com/jeffreylo)
+- [@johngibb](https://github.com/johngibb)
