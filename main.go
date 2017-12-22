@@ -58,7 +58,7 @@ func main() {
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 0, 1, ' ', tabwriter.AlignRight)
-	headers := []string{"", "Cost Basis", "Amount", "Value", "$", "%"}
+	headers := []string{"", "Cost Basis", "Amount", "$", "±", "%"}
 	printLine(w, headers)
 	printSep(w, headers)
 
@@ -73,7 +73,7 @@ func main() {
 			gain.Currency,
 			fmtUSD(gain.CostBasis),
 			fmtVal(gain.Value),
-			fmtVal(gain.NativeValue),
+			fmtUSD(gain.NativeValue),
 			sign(gain.Profit()) + fmtUSD(math.Abs(gain.Profit())),
 			sign(gain.ProfitPercent()) + fmtPCT(math.Abs(gain.ProfitPercent())),
 		})
