@@ -29,7 +29,7 @@ func main() {
 	flag.Parse()
 
 	if sinceDate != "" && all {
-		log.Fatal("one of -since or -zero")
+		log.Fatal("one of -since or -all")
 	}
 
 	var since time.Time
