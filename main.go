@@ -70,7 +70,7 @@ func printSpotRates(spot []*coinbase.SpotRate) {
 func printHoldings(holdings []*Holding) {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 0, 1, ' ', tabwriter.AlignRight)
-	headers := []string{"Holding", "Cost Basis", "Amount", "$", "+/-", "%"}
+	headers := []string{"Holding", "Qty", "Cost Basis", "Avg Price", "Price", "$", "+/-", "%"}
 	printLine(w, headers)
 	printSep(w, headers)
 
@@ -79,12 +79,14 @@ func printHoldings(holdings []*Holding) {
 	}
 	for _, holding := range holdings {
 		sums.costBasis += holding.CostBasis
-		sums.nativeValue += holding.NativeValue
+		sums.nativeValue += holding.CurrentPrice * holding.Amount
 		printLine(w, []string{
 			holding.Currency,
+			fmtVal(holding.Amount),
 			fmtUSD(holding.CostBasis),
-			fmtVal(holding.Value),
-			fmtUSD(holding.NativeValue),
+			fmtUSD(holding.CostBasis / holding.Amount),
+			fmtUSD(holding.CurrentPrice),
+			fmtUSD(holding.CurrentPrice * holding.Amount),
 			sign(holding.Profit()) + fmtUSD(math.Abs(holding.Profit())),
 			sign(holding.ProfitPercent()) + fmtPCT(math.Abs(holding.ProfitPercent())),
 		})
@@ -95,8 +97,10 @@ func printHoldings(holdings []*Holding) {
 
 	printLine(w, []string{
 		"Total",
+		"",
 		fmtUSD(sums.costBasis), // cost basis
-		"", // value (crypto)
+		"",
+		"",
 		fmtUSD(sums.nativeValue), // total usd value
 		sign(profit) + fmtUSD(math.Abs(profit)),
 		sign(profit) + fmtPCT(math.Abs(profitPCT)),
@@ -132,18 +136,18 @@ func fmtVal(val float64) string {
 }
 
 type Holding struct {
-	Currency    string
-	Value       float64
-	CostBasis   float64
-	NativeValue float64
+	Currency     string
+	Amount       float64
+	CostBasis    float64
+	CurrentPrice float64
 }
 
-func (g *Holding) Profit() float64 {
-	return g.NativeValue - g.CostBasis
+func (h *Holding) Profit() float64 {
+	return h.Amount*h.CurrentPrice - h.CostBasis
 }
 
-func (g *Holding) ProfitPercent() float64 {
-	return g.Profit() / g.CostBasis
+func (h *Holding) ProfitPercent() float64 {
+	return h.Profit() / h.CostBasis
 }
 
 type byCurrency []*coinbase.SpotRate
@@ -197,15 +201,15 @@ func calcHoldings(since time.Time) ([]*Holding, []*coinbase.SpotRate) {
 	sort.Sort(byCurrency(spot))
 	holdings := make([]*Holding, 0)
 	for _, s := range spot {
-		val := amount[coinbase.Currency(s.Base)]
-		if val == 0 {
+		amt := amount[coinbase.Currency(s.Base)]
+		if amt == 0 {
 			continue
 		}
 		holdings = append(holdings, &Holding{
-			Currency:    s.Base,
-			Value:       val,
-			CostBasis:   costBasis[coinbase.Currency(s.Base)],
-			NativeValue: val * s.Amount(),
+			Currency:     s.Base,
+			Amount:       amt,
+			CostBasis:    costBasis[coinbase.Currency(s.Base)],
+			CurrentPrice: s.Amount(),
 		})
 	}
 
