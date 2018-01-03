@@ -135,7 +135,7 @@ func (c *Client) GetAllTransactions(accounts []string) ([]*Transaction, error) {
 		}(account)
 	}
 	result := make([]*Transaction, 0)
-	for _, _ = range accounts {
+	for range accounts {
 		select {
 		case r := <-resultCh:
 			result = append(result, r...)
